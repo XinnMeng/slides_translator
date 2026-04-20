@@ -7,7 +7,6 @@ from pathlib import Path
 from pptx import Presentation
 
 from .extractor import extract_text_items, group_items_by_slide
-from .models import text_item_id
 from .replacer import apply_translations
 from .translator import TranslatorBackend
 

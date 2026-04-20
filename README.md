@@ -1,6 +1,6 @@
 # pptx-translator
 
-A small Python CLI tool to read a PowerPoint `.pptx`, detect candidate text, translate likely German text to English using the OpenAI Responses API, and write a translated `.pptx` file.
+A small Python CLI tool to read a PowerPoint `.pptx`, detect candidate text, translate likely German text to English using a free LibreTranslate-compatible API, and write a translated `.pptx` file.
 
 It uses `python-pptx` only (no Microsoft PowerPoint installation required).
 
@@ -17,7 +17,7 @@ It uses `python-pptx` only (no Microsoft PowerPoint installation required).
   - `--target en`
 - Dry-run mode to export extracted text items to JSON without modifying slides.
 - Translator abstraction for swappable backends.
-- Default backend: OpenAI Responses API (batched by slide).
+- Default backend: free LibreTranslate-compatible API.
 - Tests for extraction, replacement, and tiny end-to-end workflow.
 
 ## Project structure
@@ -39,13 +39,10 @@ pip install -e .[dev]
 
 ## Environment variables
 
-- `OPENAI_API_KEY` (required for real translation calls)
+No required API key by default.
 
-Example:
-
-```bash
-export OPENAI_API_KEY="your_api_key_here"
-```
+Optional if your LibreTranslate provider needs auth:
+- `LIBRETRANSLATE_API_KEY`
 
 ## CLI usage
 
@@ -67,10 +64,16 @@ pptx-translator input.pptx output.pptx --source de --target en
 pptx-translator demo_german_slides.pptx --dry-run --dry-run-json extracted.json
 ```
 
-### Choose model and logging level
+### Use a custom free endpoint
 
 ```bash
-pptx-translator input.pptx output.pptx --model gpt-4.1-mini --log-level DEBUG
+pptx-translator input.pptx output.pptx --libretranslate-url https://libretranslate.com/translate
+```
+
+### Optional API key
+
+```bash
+pptx-translator input.pptx output.pptx --libretranslate-api-key "$LIBRETRANSLATE_API_KEY"
 ```
 
 ## Demo workflow
@@ -81,23 +84,23 @@ Run the example script:
 python examples/demo_workflow.py
 ```
 
-This generates dry-run JSON at `examples/demo_extracted_text.json`.
+This generates dry-run JSON at `examples/demo_extracted_text.json` and a translated deck at `examples/demo_translated.pptx`.
 
 ## Translation backend design
 
 `TranslatorBackend` is an abstraction (`src/pptx_translator/translator.py`).
 
-- `OpenAIResponsesTranslator` is the default implementation.
-- It sends batched text items (per slide) and requests structured JSON output:
-  - `translations[]`
-  - each with `{ id, translated_text }`
+- `LibreTranslateTranslator` is the default implementation.
+- It translates per text item using a free LibreTranslate-compatible `/translate` endpoint.
+- It keeps likely-English text unchanged when source is `de`.
 
 This makes it easy to add future backends.
 
 ## Known limitations
 
+- Public free translation endpoints may have rate limits or availability issues.
 - Run-level formatting is only partially preserved when translated text length changes.
-- German-language detection is instruction-based in the model prompt (no separate local classifier yet).
+- German-language detection is heuristic-based in this initial version.
 - Some complex SmartArt/charts/embedded objects are not traversed for text.
 
 ## Running tests

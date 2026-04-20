@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 from pathlib import Path
 
 from .pipeline import run_translation
-from .translator import OpenAIResponsesTranslator
+from .translator import LibreTranslateTranslator
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -16,7 +17,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--target", default="en", help="Target language code (default: en)")
     parser.add_argument("--dry-run", action="store_true", help="Extract text candidates to JSON and do not modify deck")
     parser.add_argument("--dry-run-json", type=Path, default=Path("dry_run_text.json"), help="Path for dry-run JSON")
-    parser.add_argument("--model", default="gpt-4.1-mini", help="OpenAI model for translation")
+    parser.add_argument(
+        "--libretranslate-url",
+        default="https://libretranslate.com/translate",
+        help="LibreTranslate-compatible /translate endpoint",
+    )
+    parser.add_argument("--libretranslate-api-key", default=os.getenv("LIBRETRANSLATE_API_KEY"), help="Optional API key for LibreTranslate service")
     parser.add_argument("--log-level", default="INFO", help="Logging level (DEBUG, INFO, WARNING, ERROR)")
     return parser
 
@@ -37,7 +43,10 @@ def main() -> int:
         parser.error("output path is required unless --dry-run is set")
 
     try:
-        translator = OpenAIResponsesTranslator(model=args.model)
+        translator = LibreTranslateTranslator(
+            endpoint=args.libretranslate_url,
+            api_key=args.libretranslate_api_key,
+        )
         result = run_translation(
             input_path=args.input,
             output_path=args.output,

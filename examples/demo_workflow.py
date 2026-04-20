@@ -9,7 +9,7 @@ This script runs dry-run extraction on the repository sample deck.
 from pathlib import Path
 
 from pptx_translator.pipeline import run_translation
-from pptx_translator.translator import OpenAIResponsesTranslator
+from pptx_translator.translator import LibreTranslateTranslator
 
 ROOT = Path(__file__).resolve().parents[1]
 SAMPLE_IN = ROOT / "demo_german_slides.pptx"
@@ -24,25 +24,22 @@ def main() -> None:
         output_path=None,
         source_lang="de",
         target_lang="en",
-        translator=OpenAIResponsesTranslator(),
+        translator=LibreTranslateTranslator(),
         dry_run=True,
         dry_run_json_path=DRY_JSON,
     )
     print(f"Wrote dry-run JSON: {DRY_JSON}")
 
-    print("To perform translation, uncomment this call and set OPENAI_API_KEY:")
-    print(
-        """
-# run_translation(
-#     input_path=SAMPLE_IN,
-#     output_path=OUT_FILE,
-#     source_lang='de',
-#     target_lang='en',
-#     translator=OpenAIResponsesTranslator(),
-#     dry_run=False,
-# )
-"""
+    print("Running free translation with LibreTranslate endpoint...")
+    run_translation(
+        input_path=SAMPLE_IN,
+        output_path=OUT_FILE,
+        source_lang="de",
+        target_lang="en",
+        translator=LibreTranslateTranslator(),
+        dry_run=False,
     )
+    print(f"Wrote translated deck: {OUT_FILE}")
 
 
 if __name__ == "__main__":
