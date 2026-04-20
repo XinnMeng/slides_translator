@@ -32,6 +32,11 @@ def _add_common_backend_args(parser: argparse.ArgumentParser, *, default_backend
         action="store_true",
         help="Allow Argos backend to download/install missing language package",
     )
+    parser.add_argument(
+        "--argos-pivot-lang",
+        default="en",
+        help="Pivot language for Argos fallback when direct model is unavailable (default: en)",
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -75,6 +80,7 @@ def _build_translator_from_args(args) -> object:
         libretranslate_url=args.libretranslate_url,
         libretranslate_api_key=args.libretranslate_api_key,
         argos_auto_install=args.argos_auto_install_package,
+        argos_pivot_lang=args.argos_pivot_lang,
     )
 
 

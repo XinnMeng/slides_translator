@@ -43,15 +43,62 @@ Dependencies include:
 
 ## Argos language package setup
 
-For offline translation, install Argos language packages for your pair.
+For offline translation, install Argos language packages for your language pair.
 
-For example (ja -> zh):
+### Option A (recommended): auto-install from CLI
+
+This will download/install a missing package the first time:
 
 ```bash
 pptx-translator test-translation --text "こんにちは" --source ja --target zh-CN --backend offline_argos --argos-auto-install-package
 ```
 
-`zh-CN` is normalized to `zh` for Argos package matching.
+### Option B: install a specific package manually
+
+Run this Python snippet to install a specific pair (example: `ja -> zh`):
+
+```bash
+python - <<'EOF'
+import argostranslate.package
+
+source = "ja"
+target = "zh"
+
+argostranslate.package.update_package_index()
+pkgs = argostranslate.package.get_available_packages()
+match = next((p for p in pkgs if p.from_code == source and p.to_code == target), None)
+if not match:
+    raise SystemExit(f"No Argos package found for {source}->{target}")
+path = match.download()
+argostranslate.package.install_from_path(path)
+print(f"Installed Argos package: {source}->{target}")
+EOF
+```
+
+You can change `source` / `target` for other pairs, e.g.:
+- `de -> en`
+- `ja -> zh`
+
+> Note: `zh-CN` is normalized to `zh` for Argos package matching in this project.
+
+## Argos direct + pivot fallback
+
+When using Argos backend, translation resolution is:
+1. Try direct model: `source -> target` (for example `ja -> zh`).
+2. If direct model is missing, automatically fall back to pivot path (default pivot: `en`):
+   - `ja -> en -> zh`
+
+You can configure pivot language from CLI:
+
+```bash
+pptx-translator pdf-to-pptx input.pdf output.pptx --source ja --target zh --backend offline_argos --argos-pivot-lang en
+```
+
+The logs will show either:
+- `Using direct model: ja -> zh`
+- `Direct model not found, using pivot: ja -> en -> zh`
+
+If required models are missing (`ja -> en` or `en -> zh`), use `--argos-auto-install-package` or install them manually.
 
 ## CLI commands
 
