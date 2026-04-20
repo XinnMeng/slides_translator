@@ -1,158 +1,120 @@
 # pptx-translator
 
-A small Python CLI tool to read a PowerPoint `.pptx`, detect candidate text, translate likely German text to English, and write a translated `.pptx` file.
+A Python CLI tool for:
+1. translating text in `.pptx` slides, and
+2. converting **digital PDFs** into translated `.pptx` slides (one output slide per PDF page).
 
-It uses `python-pptx` only (no Microsoft PowerPoint installation required).
+It does not require Microsoft PowerPoint.
 
 ## Features
 
-- Traverses slide text in:
-  - text boxes
-  - placeholders/text-frame shapes
-  - table cells
-- Safely skips unsupported/non-text shapes.
-- Preserves slide layout and keeps formatting as much as possible (run style of first run is preserved during replacement).
-- Configurable language pair with defaults:
-  - `--source de`
-  - `--target en`
-- Dry-run mode to export extracted text items to JSON without modifying slides.
-- Backend abstraction with multiple translators:
-  - `argos` (default, offline/local)
-  - `libretranslate` (optional custom URL backend)
-- Dedicated `test-translation` command to verify one sentence before processing slides.
-- Detailed pipeline logging by slide:
-  - extraction counts per slide
-  - translation-result counts per slide
-  - replacement logs (`Applying N items to slide X`, `Updated item ID ...`, `Skipped item ID ...`)
+### PPTX -> PPTX pipeline
+- Traverses text in text boxes, placeholders/text-frame shapes, and table cells.
+- Preserves layout and formatting approximately.
+- Per-slide extraction/translation/replacement logging.
 
-## Multi-slide replacement bug fix (root cause)
+### PDF -> PPTX pipeline (new)
+- Uses **PyMuPDF (`fitz`)** with `page.get_text("blocks", sort=True)`.
+- Extracts block text and bounding boxes per page.
+- Creates one blank PPTX slide per PDF page.
+- Maps PDF coordinates to slide coordinates (approximate layout in v1).
+- Translates each text block using the **offline Argos backend** (default for this command).
+- Dry-run extraction command to JSON.
 
-Root cause: an overly aggressive "looks English" heuristic in the previous pipeline skipped many German strings that used only ASCII letters (for example `Guten Morgen`). This made later slides appear untranslated even though extraction/replacement logic was traversing slides.
+## Important limitation
 
-Fix:
-- removed heuristic-based skipping from the core translation flow,
-- added per-slide extraction and translation count logs,
-- added detailed replacement logs for each item,
-- added a multi-slide end-to-end test to ensure updates are applied beyond slide 0.
+- v1 supports **digital PDFs only** (text-selectable PDFs).
+- Scanned/image-only PDFs are not OCR’d in this version.
 
-## Why LibreTranslate returned HTTP 400
-
-Some LibreTranslate-compatible deployments expect `application/x-www-form-urlencoded` payloads rather than JSON payloads.
-
-This project now:
-- tries `form` payload first,
-- falls back to JSON payload,
-- logs full failure response body and status code for debugging.
-
-## Project structure
-
-- `src/pptx_translator/` – package code
-- `tests/` – unit and integration tests
-- `examples/` – demo workflow and dry-run output target
-- `demo_german_slides.pptx` – sample input deck
-
-## Setup
+## Installation
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .
-# for tests
+# tests
 pip install -e .[dev]
 ```
 
-### Argos Translate language package setup (de -> en)
+Dependencies include:
+- `python-pptx`
+- `argostranslate`
+- `PyMuPDF`
 
-Argos backend is local/offline once language packages are installed.
+## Argos language package setup
 
-You can either:
-1. install packages yourself in advance, or
-2. run CLI with `--argos-auto-install-package` to allow automatic package download/install.
+For offline translation, install Argos language packages for your pair.
 
-Example preflight test (recommended):
+For example (ja -> zh):
 
 ```bash
-pptx-translator test-translation --text "Guten Morgen" --source de --target en --backend argos --argos-auto-install-package
+pptx-translator test-translation --text "こんにちは" --source ja --target zh-CN --backend offline_argos --argos-auto-install-package
 ```
 
-## Environment variables
+`zh-CN` is normalized to `zh` for Argos package matching.
 
-Optional if your LibreTranslate provider needs auth:
-- `LIBRETRANSLATE_API_KEY`
+## CLI commands
 
-## CLI usage
+### 1) Translate PPTX
 
-### 1) Test one sentence first (recommended)
+```bash
+pptx-translator translate input.pptx output.pptx --source de --target en --backend argos
+```
+
+### 2) Test translation sentence
 
 ```bash
 pptx-translator test-translation --text "Guten Morgen" --source de --target en --backend argos
 ```
 
-### 2) Translate a deck with default offline backend (Argos)
+### 3) Convert digital PDF to translated PPTX (default ja -> zh-CN)
 
 ```bash
-pptx-translator translate demo_german_slides.pptx translated_slides.pptx
+pptx-translator pdf-to-pptx input.pdf output.pptx --backend offline_argos
 ```
 
-### 3) Validate one sentence before slide processing
+Explicit language pair:
 
 ```bash
-pptx-translator translate input.pptx output.pptx --validate-text "Guten Morgen"
+pptx-translator pdf-to-pptx input.pdf output.pptx --source ja --target zh-CN --backend offline_argos
 ```
 
-### 4) Dry run (extract JSON only)
+### 4) Dry-run: extract PDF blocks to JSON
 
 ```bash
-pptx-translator translate demo_german_slides.pptx out.pptx --dry-run --dry-run-json extracted.json
+pptx-translator extract-pdf-blocks input.pdf --json-out blocks.json
 ```
 
-### 5) Use LibreTranslate custom URL backend (optional)
+JSON includes:
+- page index
+- block index
+- bbox
+- original text
 
-```bash
-pptx-translator translate input.pptx output.pptx \
-  --backend libretranslate \
-  --libretranslate-url https://libretranslate.com/translate
-```
+## Logging
 
-### 6) LibreTranslate with API key
-
-```bash
-pptx-translator translate input.pptx output.pptx \
-  --backend libretranslate \
-  --libretranslate-api-key "$LIBRETRANSLATE_API_KEY"
-```
-
-## Demo workflow
-
-Run the example script:
-
-```bash
-python examples/demo_workflow.py
-```
-
-This script demonstrates:
-- dry-run extraction,
-- single-sentence backend test,
-- full deck translation.
-
-## Translation backend design
-
-`TranslatorBackend` is the abstraction in `src/pptx_translator/translator.py`.
-
-Implemented backends:
-- `ArgosTranslateBackend` (default): local/offline translation with optional package auto-install.
-- `LibreTranslateBackend` (optional): custom URL HTTP translation.
+The PDF pipeline logs:
+- page count
+- blocks extracted per page
+- blocks translated per page
+- text boxes inserted per slide
+- warnings for empty/image-only pages
 
 ## Known limitations
 
-- Argos translation quality depends on installed language package.
-- Public free HTTP translation endpoints may rate limit or require API keys.
-- Run-level formatting is only partially preserved when translated text length changes.
-- German-language detection is heuristic-based in this initial version.
-- Some complex SmartArt/charts/embedded objects are not traversed for text.
+- PDF layout preservation is approximate in v1.
+- Font/style matching from PDF is not preserved exactly.
+- Very fragmented PDF text blocks may still require manual cleanup.
+- Scanned PDFs are not supported in this version.
 
-## Running tests
+## Tests
 
 ```bash
 pytest
 ```
+
+Added tests cover:
+- PDF text block extraction
+- multi-page PDF -> PPTX conversion
+- output PPTX slide count equals input PDF page count
+- translated Chinese-like text appears in generated PPTX

@@ -89,11 +89,22 @@ class LibreTranslateBackend(TranslatorBackend):
         return self._request_translate(text=text, source_lang=source_lang, target_lang=target_lang)
 
 
+def normalize_lang_code(lang: str) -> str:
+    mapping = {
+        "zh-CN": "zh",
+        "zh-Hans": "zh",
+    }
+    return mapping.get(lang, lang)
+
+
+
 @dataclass
 class ArgosTranslateBackend(TranslatorBackend):
     auto_install_package: bool = False
 
     def _load_translation(self, source_lang: str, target_lang: str):
+        source_lang = normalize_lang_code(source_lang)
+        target_lang = normalize_lang_code(target_lang)
         try:
             import argostranslate.package
             import argostranslate.translate
@@ -158,7 +169,7 @@ def build_backend(
     libretranslate_api_key: str | None,
     argos_auto_install: bool,
 ) -> TranslatorBackend:
-    if backend == "argos":
+    if backend in {"argos", "offline_argos"}:
         return ArgosTranslateBackend(auto_install_package=argos_auto_install)
     if backend == "libretranslate":
         return LibreTranslateBackend(endpoint=libretranslate_url, api_key=libretranslate_api_key)
