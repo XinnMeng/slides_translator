@@ -20,6 +20,20 @@ It uses `python-pptx` only (no Microsoft PowerPoint installation required).
   - `argos` (default, offline/local)
   - `libretranslate` (optional custom URL backend)
 - Dedicated `test-translation` command to verify one sentence before processing slides.
+- Detailed pipeline logging by slide:
+  - extraction counts per slide
+  - translation-result counts per slide
+  - replacement logs (`Applying N items to slide X`, `Updated item ID ...`, `Skipped item ID ...`)
+
+## Multi-slide replacement bug fix (root cause)
+
+Root cause: an overly aggressive "looks English" heuristic in the previous pipeline skipped many German strings that used only ASCII letters (for example `Guten Morgen`). This made later slides appear untranslated even though extraction/replacement logic was traversing slides.
+
+Fix:
+- removed heuristic-based skipping from the core translation flow,
+- added per-slide extraction and translation count logs,
+- added detailed replacement logs for each item,
+- added a multi-slide end-to-end test to ensure updates are applied beyond slide 0.
 
 ## Why LibreTranslate returned HTTP 400
 

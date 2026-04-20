@@ -10,9 +10,11 @@ class TextItemRef:
     slide_index: int
     shape_index: int
     text_frame_paragraph_index: int | None = None
+    text_frame_run_index: int | None = None
     table_row_index: int | None = None
     table_col_index: int | None = None
     table_paragraph_index: int | None = None
+    table_run_index: int | None = None
 
 
 @dataclass(frozen=True)
@@ -42,10 +44,14 @@ class TranslationBatchResult:
 def text_item_id(ref: TextItemRef) -> str:
     parts = [f"s{ref.slide_index}", f"sh{ref.shape_index}"]
     if ref.text_frame_paragraph_index is not None:
-        parts.append(f"p{ref.text_frame_paragraph_index}")
+        parts.append(f"tp{ref.text_frame_paragraph_index}")
+    if ref.text_frame_run_index is not None:
+        parts.append(f"tr{ref.text_frame_run_index}")
     if ref.table_row_index is not None and ref.table_col_index is not None:
         parts.append(f"r{ref.table_row_index}")
         parts.append(f"c{ref.table_col_index}")
     if ref.table_paragraph_index is not None:
-        parts.append(f"p{ref.table_paragraph_index}")
+        parts.append(f"tblp{ref.table_paragraph_index}")
+    if ref.table_run_index is not None:
+        parts.append(f"tblr{ref.table_run_index}")
     return "-".join(parts)

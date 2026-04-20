@@ -15,11 +15,20 @@ def _paragraph_text(paragraph) -> str:
     return text.strip()
 
 
+def _first_non_empty_run_index(paragraph) -> int | None:
+    for idx, run in enumerate(paragraph.runs):
+        if run.text and run.text.strip():
+            return idx
+    return 0 if paragraph.runs else None
+
+
 def extract_text_items(prs: Presentation) -> list[TextItem]:
     """Extract candidate text snippets from text frames and table cells."""
     items: list[TextItem] = []
 
     for slide_idx, slide in enumerate(prs.slides):
+        slide_count_before = len(items)
+
         for shape_idx, shape in enumerate(slide.shapes):
             # Text boxes/placeholders/other text-frame-capable shapes.
             if getattr(shape, "has_text_frame", False) and shape.has_text_frame:
@@ -34,6 +43,7 @@ def extract_text_items(prs: Presentation) -> list[TextItem]:
                                 slide_index=slide_idx,
                                 shape_index=shape_idx,
                                 text_frame_paragraph_index=p_idx,
+                                text_frame_run_index=_first_non_empty_run_index(paragraph),
                             ),
                             text=text,
                         )
@@ -56,10 +66,14 @@ def extract_text_items(prs: Presentation) -> list[TextItem]:
                                         table_row_index=r_idx,
                                         table_col_index=c_idx,
                                         table_paragraph_index=p_idx,
+                                        table_run_index=_first_non_empty_run_index(paragraph),
                                     ),
                                     text=text,
                                 )
                             )
+
+        slide_count = len(items) - slide_count_before
+        logger.info("Extracted %s text items from slide %s", slide_count, slide_idx)
 
     logger.info("Extracted %s text items from %s slides", len(items), len(prs.slides))
     return items

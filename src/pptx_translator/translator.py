@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
@@ -29,9 +28,6 @@ class TranslatorBackend(ABC):
             key = text_item_id(item.ref)
             original = item.text
 
-            if source_lang == "de" and looks_english(original):
-                translations.append(Translation(id=key, translated_text=original))
-                continue
 
             try:
                 translated_text = self.translate_text(original, source_lang=source_lang, target_lang=target_lang)
@@ -168,12 +164,3 @@ def build_backend(
         return LibreTranslateBackend(endpoint=libretranslate_url, api_key=libretranslate_api_key)
     raise ValueError(f"Unsupported backend: {backend}")
 
-
-def looks_english(text: str) -> bool:
-    if any(ch in text for ch in "äöüÄÖÜß"):
-        return False
-    letters = re.findall(r"[A-Za-z]", text)
-    if not letters:
-        return True
-    ascii_ratio = len(letters) / max(len(text), 1)
-    return ascii_ratio > 0.5

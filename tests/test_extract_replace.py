@@ -57,3 +57,24 @@ def test_replace_translated_text_items() -> None:
     assert "Hello world" in new_texts
     assert "Good morning" in new_texts
     assert "Already English" in new_texts
+
+
+def test_extract_text_items_multiple_slides() -> None:
+    prs = Presentation()
+
+    slide_1 = prs.slides.add_slide(prs.slide_layouts[5])
+    box_1 = slide_1.shapes.add_textbox(left=0, top=0, width=2_000_000, height=1_000_000)
+    box_1.text_frame.paragraphs[0].text = "Hallo"
+
+    slide_2 = prs.slides.add_slide(prs.slide_layouts[5])
+    box_2 = slide_2.shapes.add_textbox(left=0, top=0, width=2_000_000, height=1_000_000)
+    box_2.text_frame.paragraphs[0].text = "Guten Morgen"
+
+    items = extract_text_items(prs)
+    assert len(items) == 2
+
+    by_slide = {}
+    for item in items:
+        by_slide[item.ref.slide_index] = by_slide.get(item.ref.slide_index, 0) + 1
+
+    assert by_slide == {0: 1, 1: 1}
