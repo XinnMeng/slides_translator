@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build macOS app bundle for pptx-translator GUI
+# Build macOS app bundle for pptx-translator GUI.
+# Assumes your virtual environment is already created and dependencies installed.
 
-if [ ! -d ".venv" ]; then
-  python3 -m venv .venv
+if ! command -v pyinstaller >/dev/null 2>&1; then
+  echo "ERROR: pyinstaller not found in PATH."
+  echo "Activate your venv first and install dependencies: pip install -e .[dev]"
+  exit 1
 fi
-
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -e .[dev]
 
 pyinstaller --clean --noconfirm --windowed --name pptx-translator-gui \
   --collect-all argostranslate \

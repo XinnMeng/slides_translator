@@ -101,17 +101,17 @@ pptx-translator-gui
 > Build Windows executable on **Windows**.
 
 ### Step-by-step
-1. Open `cmd.exe` (or PowerShell) in project root.
-2. Run:
+1. Activate your existing virtual environment (already prepared).
+2. Open `cmd.exe` (or PowerShell) in project root.
+3. Run:
 
 ```bat
 scripts\build_windows.bat
 ```
 
 ### What the script does
-- Creates `.venv` if missing
-- Installs dependencies + PyInstaller
-- Builds a windowed executable (no console)
+- Runs PyInstaller to build a windowed executable (no console)
+- Assumes dependencies are already installed in your active venv
 
 ### Output location
 - `dist\pptx-translator-gui\` (contains `pptx-translator-gui.exe` and bundled files)
@@ -130,16 +130,16 @@ scripts\build_windows.bat
 ### Run directly from Python
 
 ```bash
-python3 -m venv .venv
+# use your existing prepared venv
 source .venv/bin/activate
-pip install --upgrade pip
-pip install -e .[dev]
 python gui_app.py
 ```
 
 ### Optional app packaging
 
 ```bash
+# use your existing prepared venv
+source .venv/bin/activate
 ./scripts/build_mac.sh
 ```
 
