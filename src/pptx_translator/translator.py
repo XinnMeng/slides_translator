@@ -181,3 +181,35 @@ def build_backend(
     if backend == "libretranslate":
         return LibreTranslateBackend(endpoint=libretranslate_url, api_key=libretranslate_api_key)
     raise ValueError(f"Unsupported backend: {backend}")
+
+
+def check_argos_model_availability(source_lang: str, target_lang: str, pivot_lang: str = "en") -> tuple[bool, str]:
+    """Return (available, message) for direct or pivot model availability."""
+    src = normalize_lang_code(source_lang)
+    tgt = normalize_lang_code(target_lang)
+    piv = normalize_lang_code(pivot_lang)
+
+    try:
+        import argostranslate.translate as argos_translate
+    except Exception as exc:
+        return False, "Argos Translate is not installed in this environment."
+
+    installed_languages = argos_translate.get_installed_languages()
+
+    def _has_pair(a: str, b: str) -> bool:
+        la = next((x for x in installed_languages if x.code == a), None)
+        lb = next((x for x in installed_languages if x.code == b), None)
+        if not la or not lb:
+            return False
+        return la.get_translation(lb) is not None
+
+    if _has_pair(src, tgt):
+        return True, f"Direct Argos model available: {src} -> {tgt}"
+
+    if _has_pair(src, piv) and _has_pair(piv, tgt):
+        return True, f"Direct model missing; pivot models available: {src} -> {piv} -> {tgt}"
+
+    return False, (
+        "Missing Argos models. Need either direct model "
+        f"{src}->{tgt} or pivot models {src}->{piv} and {piv}->{tgt}."
+    )

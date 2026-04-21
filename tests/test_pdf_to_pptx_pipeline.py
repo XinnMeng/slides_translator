@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import fitz
+import pytest
+
+fitz = pytest.importorskip("fitz")
 from pptx import Presentation
 
 from pptx_translator.pipelines.pdf_to_pptx_pipeline import run_pdf_to_pptx_translation

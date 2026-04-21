@@ -1,167 +1,229 @@
-# pptx-translator
+# PPTX Translator Desktop App
 
-A Python CLI tool for:
-1. translating text in `.pptx` slides, and
-2. converting **digital PDFs** into translated `.pptx` slides (one output slide per PDF page).
+A cross-platform desktop application (Windows + macOS) for translating:
+- **PowerPoint (.pptx) -> translated .pptx**
+- **Digital PDF -> translated .pptx** (one slide per PDF page)
 
-It does not require Microsoft PowerPoint.
+The app is designed for non-technical users with a GUI, while keeping the existing core translation pipelines reusable for developers.
 
-## Features
+---
 
-### PPTX -> PPTX pipeline
-- Traverses text in text boxes, placeholders/text-frame shapes, and table cells.
-- Preserves layout and formatting approximately.
-- Per-slide extraction/translation/replacement logging.
+## 1) Project overview
 
-### PDF -> PPTX pipeline (new)
-- Uses **PyMuPDF (`fitz`)** with `page.get_text("blocks", sort=True)`.
-- Extracts block text and bounding boxes per page.
-- Creates one blank PPTX slide per PDF page.
-- Maps PDF coordinates to slide coordinates (approximate layout in v1).
-- Translates each text block using the **offline Argos backend** (default for this command).
-- Dry-run extraction command to JSON.
+### What the software does
+- Translates text from PowerPoint files and writes a new translated PowerPoint.
+- Extracts text blocks from digital PDFs, translates them, and creates a PPTX output with approximate layout.
 
-## Important limitation
+### Supported modes
+1. **PPTX translate**
+   - input: `.pptx`
+   - output: `.pptx`
+2. **PDF to translated PPTX**
+   - input: digital (text-selectable) `.pdf`
+   - output: `.pptx`
 
-- v1 supports **digital PDFs only** (text-selectable PDFs).
-- Scanned/image-only PDFs are not OCR’d in this version.
+### Supported platforms
+- Windows (primary end-user target)
+- macOS (same codebase)
 
-## Installation
+### Current limitations
+- PDF mode supports **digital PDFs only** (not scanned OCR PDFs).
+- PDF layout is approximate in v1 (block-level textbox mapping).
+- Translation quality depends on available Argos language models.
+
+---
+
+## 2) End-user usage (GUI)
+
+### Launch the GUI
+After install:
+
+```bash
+pptx-translator-gui
+```
+
+Or from source:
+
+```bash
+python gui_app.py
+```
+
+### In the app
+1. Select **Mode**:
+   - `PPTX translate`
+   - `PDF to translated PPTX`
+2. Choose **Input file**.
+3. Choose **Output file** (`.pptx`).
+4. Choose **Source language** and **Target language**.
+5. Keep backend as `offline_argos` (default recommended).
+6. (Optional) check **Auto-install missing Argos models**.
+7. Click **Translate**.
+
+### If a model is missing
+- The GUI shows a clear message in logs/error popup.
+- If auto-install is enabled, app attempts to install missing Argos model pairs.
+- If direct pair is missing, backend can use pivot fallback (default: `en`).
+
+---
+
+## 3) Developer setup
+
+### Python version
+- Python **3.10+**
+
+### Setup
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate
-pip install -e .
-# tests
+source .venv/bin/activate  # macOS/Linux
+# Windows: .venv\Scripts\activate
+
+pip install --upgrade pip
 pip install -e .[dev]
 ```
 
-Dependencies include:
-- `python-pptx`
-- `argostranslate`
-- `PyMuPDF`
-
-## Argos language package setup
-
-For offline translation, install Argos language packages for your language pair.
-
-### Option A (recommended): auto-install from CLI
-
-This will download/install a missing package the first time:
+### Run GUI locally
 
 ```bash
-pptx-translator test-translation --text "こんにちは" --source ja --target zh-CN --backend offline_argos --argos-auto-install-package
+python gui_app.py
 ```
 
-### Option B: install a specific package manually
-
-Run this Python snippet to install a specific pair (example: `ja -> zh`):
+or
 
 ```bash
-python - <<'EOF'
-import argostranslate.package
-
-source = "ja"
-target = "zh"
-
-argostranslate.package.update_package_index()
-pkgs = argostranslate.package.get_available_packages()
-match = next((p for p in pkgs if p.from_code == source and p.to_code == target), None)
-if not match:
-    raise SystemExit(f"No Argos package found for {source}->{target}")
-path = match.download()
-argostranslate.package.install_from_path(path)
-print(f"Installed Argos package: {source}->{target}")
-EOF
+pptx-translator-gui
 ```
 
-You can change `source` / `target` for other pairs, e.g.:
-- `de -> en`
-- `ja -> zh`
+---
 
-> Note: `zh-CN` is normalized to `zh` for Argos package matching in this project.
+## 4) Windows build instructions (.exe)
 
-## Argos direct + pivot fallback
+> Build Windows executable on **Windows**.
 
-When using Argos backend, translation resolution is:
-1. Try direct model: `source -> target` (for example `ja -> zh`).
-2. If direct model is missing, automatically fall back to pivot path (default pivot: `en`):
-   - `ja -> en -> zh`
+### Step-by-step
+1. Open `cmd.exe` (or PowerShell) in project root.
+2. Run:
 
-You can configure pivot language from CLI:
-
-```bash
-pptx-translator pdf-to-pptx input.pdf output.pptx --source ja --target zh --backend offline_argos --argos-pivot-lang en
+```bat
+scripts\build_windows.bat
 ```
 
-The logs will show either:
-- `Using direct model: ja -> zh`
-- `Direct model not found, using pivot: ja -> en -> zh`
+### What the script does
+- Creates `.venv` if missing
+- Installs dependencies + PyInstaller
+- Builds a windowed executable (no console)
 
-If required models are missing (`ja -> en` or `en -> zh`), use `--argos-auto-install-package` or install them manually.
+### Output location
+- `dist\pptx-translator-gui\` (contains `pptx-translator-gui.exe` and bundled files)
 
-## CLI commands
+### Common issues
+- Missing build tools / antivirus quarantine of `.exe`
+- Missing Argos model at runtime (enable auto-install or install manually)
+- Packaging misses resources: rebuild using `packaging/pyinstaller_gui.spec`
 
-### 1) Translate PPTX
+---
+
+## 5) macOS build instructions (.app)
+
+> Build macOS app on **macOS**.
+
+### Run directly from Python
 
 ```bash
-pptx-translator translate input.pptx output.pptx --source de --target en --backend argos
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -e .[dev]
+python gui_app.py
 ```
 
-### 2) Test translation sentence
+### Optional app packaging
 
 ```bash
-pptx-translator test-translation --text "Guten Morgen" --source de --target en --backend argos
+./scripts/build_mac.sh
 ```
 
-### 3) Convert digital PDF to translated PPTX (default ja -> zh-CN)
+### Output location
+- `dist/pptx-translator-gui.app`
+
+### Common issues
+- macOS Gatekeeper warning for unsigned app
+- Missing Argos model at runtime
+- App bundle missing resources (use spec file and rebuild)
+
+---
+
+## 6) Notes on cross-platform packaging
+
+- A Windows `.exe` **cannot run on macOS**.
+- A macOS `.app` **must be built on macOS**.
+- A Windows executable **must be built on Windows**.
+
+---
+
+## 7) Troubleshooting
+
+### Missing Argos language model
+- Enable **Auto-install missing Argos models** in GUI.
+- Or preinstall models manually.
+
+### Unsupported language pair
+- Argos may not have that direct pair.
+- App automatically tries pivot fallback (`source -> en -> target`) when possible.
+
+### PDF has no extractable text
+- Likely scanned/image-only PDF.
+- v1 does not include OCR.
+
+### App opens but translation fails
+- Check log/status panel for details.
+- Verify language pair and model availability.
+- Verify input/output file paths and write permissions.
+
+### Packaged app cannot find resources
+- Rebuild with scripts and/or `packaging/pyinstaller_gui.spec`.
+- Ensure dependencies were installed in build environment.
+
+### macOS security warning for unsigned app
+- Right-click app -> Open, or allow in Security settings.
+
+---
+
+## 8) Example workflows
+
+### A) German PPTX to English
+- Mode: `PPTX translate`
+- Source: `de`
+- Target: `en`
+- Backend: `offline_argos`
+
+### B) Japanese digital PDF to Chinese PPTX
+- Mode: `PDF to translated PPTX`
+- Source: `ja`
+- Target: `zh-CN`
+- Backend: `offline_argos`
+
+---
+
+## CLI (still available for developers)
 
 ```bash
-pptx-translator pdf-to-pptx input.pdf output.pptx --backend offline_argos
-```
+# PPTX workflow
+pptx-translator translate input.pptx output.pptx --source de --target en --backend offline_argos
 
-Explicit language pair:
-
-```bash
+# PDF workflow
 pptx-translator pdf-to-pptx input.pdf output.pptx --source ja --target zh-CN --backend offline_argos
-```
 
-### 4) Dry-run: extract PDF blocks to JSON
-
-```bash
+# PDF extraction dry-run
 pptx-translator extract-pdf-blocks input.pdf --json-out blocks.json
 ```
 
-JSON includes:
-- page index
-- block index
-- bbox
-- original text
+---
 
-## Logging
+## Repository structure (high level)
 
-The PDF pipeline logs:
-- page count
-- blocks extracted per page
-- blocks translated per page
-- text boxes inserted per slide
-- warnings for empty/image-only pages
-
-## Known limitations
-
-- PDF layout preservation is approximate in v1.
-- Font/style matching from PDF is not preserved exactly.
-- Very fragmented PDF text blocks may still require manual cleanup.
-- Scanned PDFs are not supported in this version.
-
-## Tests
-
-```bash
-pytest
-```
-
-Added tests cover:
-- PDF text block extraction
-- multi-page PDF -> PPTX conversion
-- output PPTX slide count equals input PDF page count
-- translated Chinese-like text appears in generated PPTX
+- `src/pptx_translator/` core logic + CLI
+- `src/pptx_translator/gui/` desktop UI + background worker
+- `scripts/` platform build scripts
+- `packaging/` optional pyinstaller spec
+- `tests/` automated tests

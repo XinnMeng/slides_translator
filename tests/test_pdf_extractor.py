@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import fitz
+import pytest
+
+fitz = pytest.importorskip("fitz")
 
 from pptx_translator.extractors.pdf_extractor import extract_pdf_text_blocks, write_extraction_json
 
